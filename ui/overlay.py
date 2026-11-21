@@ -16,23 +16,15 @@ class AllanOverlay(Gtk.Window):
         self.current_tab = "chat"
         self._hover_timeout = None
         self._leave_timeout = None
-        self._voice = None
 
         self._setup_window()
         self._build_ui()
         self._apply_css()
 
-        self.connect("destroy", self._on_destroy)
+        self.connect("destroy", Gtk.main_quit)
         self.connect("draw", self._on_draw)
         self.connect("realize", lambda w: GLib.timeout_add(50, self._reposition))
         self.connect("size-allocate", lambda w, a: GLib.idle_add(self._reposition))
-
-        if self.config.get("mic_enabled"):
-            GLib.timeout_add(1000, self._start_voice)
-
-    def _on_destroy(self, *args):
-        self._stop_voice()
-        Gtk.main_quit()
 
     def _reposition(self):
         display = Gdk.Display.get_default()
@@ -275,7 +267,7 @@ class AllanOverlay(Gtk.Window):
 
         # Microfone
         s.pack_start(self._row_switch("Microfone", self.config.get("mic_enabled"),
-                                       self._on_mic_toggle), False, False, 0)
+                                       lambda sw, st: self.config.set("mic_enabled", st)), False, False, 0)
 
         # Hover
         s.pack_start(self._row_switch("Abrir com hover", self.config.get("hover_enabled"),
@@ -565,74 +557,6 @@ class AllanOverlay(Gtk.Window):
         launch_app(app_id) if action == "start" else stop_app(app_id)
         GLib.timeout_add(1500, self._refresh_connections)
 
-    # ── Voice ──
-
-    def _on_mic_toggle(self, sw, state):
-        self.config.set("mic_enabled", state)
-        if state:
-            self._start_voice()
-        else:
-            self._stop_voice()
-
-    def _start_voice(self):
-        from core import voice
-        if not voice.is_available():
-            self._add_message(self.config.get("name"),
-                "Vosk nao instalado. Rode: pip install vosk", is_user=False)
-            return
-        if not voice.is_model_downloaded():
-            self._add_message(self.config.get("name"),
-                "Baixando modelo de voz pt-BR...", is_user=False)
-            threading.Thread(target=self._download_voice_model, daemon=True).start()
-            return
-        self._voice = voice.VoiceListener(
-            on_text=self._on_voice_text,
-            on_partial=self._on_voice_partial,
-        )
-        self._voice.start()
-        GLib.idle_add(lambda: self.status_label.set_text("Ouvindo..."))
-
-    def _download_voice_model(self):
-        from core import voice
-        def on_progress(pct):
-            if pct >= 0:
-                GLib.idle_add(lambda p=pct: self.status_label.set_text(f"Modelo: {p}%"))
-            else:
-                GLib.idle_add(lambda: self._add_message(self.config.get("name"),
-                    "Erro ao baixar modelo de voz.", is_user=False))
-        ok = voice.download_model(on_progress)
-        if ok:
-            GLib.idle_add(lambda: self._add_message(self.config.get("name"),
-                "Modelo de voz instalado! Microfone ativo.", is_user=False))
-            GLib.idle_add(self._start_voice)
-        else:
-            GLib.idle_add(lambda: self.status_label.set_text("Pronto"))
-
-    def _stop_voice(self):
-        if self._voice:
-            self._voice.stop()
-            self._voice = None
-        GLib.idle_add(lambda: self.status_label.set_text("Pronto"))
-
-    def _on_voice_text(self, text):
-        GLib.idle_add(self._process_voice_text, text)
-
-    def _process_voice_text(self, text):
-        if not text or self.is_processing:
-            return
-        if self.current_tab != "chat":
-            self._on_tab_click(None, "chat")
-        if not self.expanded:
-            self._expand()
-        self.entry.set_text("")
-        self._add_message("Voce", text, is_user=True)
-        self.status_label.set_text("Pensando...")
-        self.is_processing = True
-        threading.Thread(target=self._run_chat, args=(text,), daemon=True).start()
-
-    def _on_voice_partial(self, text):
-        GLib.idle_add(lambda: self.entry.set_text(text))
-
     # ── Hover (window-level) ──
 
     def _cancel_timer(self, attr):
@@ -778,11 +702,7 @@ class AllanOverlay(Gtk.Window):
             full = f"Erro: {e}"
             GLib.idle_add(lambda: label[0].set_text(full) if label[0] else None)
 
-        def _done():
-            self.is_processing = False
-            mic_on = self._voice and self._voice.is_running()
-            self.status_label.set_text("Ouvindo..." if mic_on else "Pronto")
-        GLib.idle_add(_done)
+        GLib.idle_add(lambda: (self.status_label.set_text("Pronto"), setattr(self, "is_processing", False)))
 
     # ── CSS ──
 
