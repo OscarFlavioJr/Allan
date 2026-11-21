@@ -21,7 +21,6 @@ Allan e um overlay desktop flutuante que roda 100% local com modelos via [Ollama
 - **Monitora o sistema** — CPU, RAM, disco, processos
 - **Gerencia arquivos** — listar diretorios, navegar pastas
 - **Abre aplicativos** — inicia qualquer app instalado
-- **Comandos por voz** — speech-to-text 100% local com Vosk (pt-BR)
 - **Configuravel** — nome, cor, posicao, tamanho, hover, instrucoes custom
 - **Auto-start** — inicia automaticamente no login
 
@@ -56,8 +55,7 @@ Allan e um overlay desktop flutuante que roda 100% local com modelos via [Ollama
 - Python 3.10+
 - GTK3 (`gir1.2-gtk-3.0`)
 - [Ollama](https://ollama.ai) instalado
-- `playerctl` (controle de musica/volume)
-- `arecord` (ALSA, para comandos por voz)
+- `playerctl` e `xdotool` (para controle de musica/volume)
 
 ### Setup
 
@@ -67,13 +65,13 @@ git clone https://github.com/OscarFlavioJr/Allan.git
 cd Allan
 
 # 2. Instale dependencias do sistema
-sudo apt install -y gir1.2-gtk-3.0 playerctl python3-venv alsa-utils
+sudo apt install -y gir1.2-gtk-3.0 playerctl xdotool
 
-# 3. Instale (cria venv + auto-start)
+# 3. Instale o auto-start (opcional)
 ./install.sh
 
 # 4. Inicie
-cd ~/scripts/allan && GDK_BACKEND=x11 ./venv/bin/python3 allan.py &
+cd ~/scripts/allan && GDK_BACKEND=x11 python3 allan.py &
 ```
 
 ### Configurando um modelo
@@ -104,7 +102,7 @@ ollama create meu-modelo -f Modelfile
 ### Configuracoes
 
 - **Nome** — muda o titulo do assistente
-- **Microfone** — toggle on/off para comandos por voz (Vosk STT local)
+- **Microfone** — toggle on/off (STT futuro)
 - **Hover** — abre ao passar o mouse
 - **Cor** — 8 opcoes de cor accent
 - **Posicao** — Topo, Esquerda, Direita, Embaixo
@@ -126,8 +124,7 @@ allan/
 │   ├── connections.py       # Deteccao de PWAs e apps nativos
 │   ├── media_controller.py  # Controle de musica e volume (playerctl/wpctl)
 │   ├── ollama_manager.py    # API do Ollama (chat, pull, delete, stream)
-│   ├── system_manager.py    # Sistema (RAM, disco, processos, arquivos)
-│   └── voice.py             # Speech-to-text local (Vosk pt-BR)
+│   └── system_manager.py    # Sistema (RAM, disco, processos, arquivos)
 └── ui/
     └── overlay.py           # Interface GTK overlay always-on-top
 ```
@@ -149,7 +146,7 @@ allan/
 ## Roadmap
 
 - [ ] Integracao com navegador (extensao)
-- [x] Comandos por voz (speech-to-text local)
+- [ ] Comandos por voz (speech-to-text local)
 - [ ] Plugins para automacao
 - [ ] Fallback para Claude API quando Ollama indisponivel
 - [ ] Tray icon com notificacoes

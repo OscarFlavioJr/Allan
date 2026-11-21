@@ -2,4 +2,3 @@ start.sh
 allan.desktop
 __pycache__/
 *.pyc
-venv/

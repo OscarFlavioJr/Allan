@@ -6,21 +6,11 @@ AUTOSTART_DIR="$HOME/.config/autostart"
 
 echo "=== Instalando Allan ==="
 
-# Criar venv se não existe
-if [ ! -d "$SCRIPT_DIR/venv" ]; then
-    echo "Criando ambiente virtual..."
-    python3 -m venv --system-site-packages "$SCRIPT_DIR/venv"
-    "$SCRIPT_DIR/venv/bin/pip" install --quiet vosk
-    echo "✓ Ambiente virtual criado com Vosk"
-else
-    echo "✓ Ambiente virtual já existe"
-fi
-
 # Criar start.sh
 cat > "$SCRIPT_DIR/start.sh" << EOF
 #!/bin/bash
 cd "$SCRIPT_DIR"
-exec GDK_BACKEND=x11 "$SCRIPT_DIR/venv/bin/python3" "$SCRIPT_DIR/allan.py"
+exec python3 "$SCRIPT_DIR/allan.py"
 EOF
 chmod +x "$SCRIPT_DIR/start.sh"
 
@@ -59,4 +49,4 @@ fi
 
 echo ""
 echo "=== Allan instalado! ==="
-echo "Iniciar: GDK_BACKEND=x11 $SCRIPT_DIR/venv/bin/python3 $SCRIPT_DIR/allan.py"
+echo "Iniciar: python3 $SCRIPT_DIR/allan.py"
