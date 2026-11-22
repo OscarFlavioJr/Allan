@@ -3,6 +3,7 @@ import re
 from core import ollama_manager as ollama
 from core import system_manager as system
 from core import media_controller as media
+from core import screen
 
 DEFAULT_MODEL = None
 
@@ -20,6 +21,7 @@ BASE_SYSTEM_PROMPT = """Você é {name}, um assistente de IA pessoal e local. Vo
 - Ver informações do sistema: RAM, disco, CPU, processos
 - Listar arquivos e pastas
 - Abrir aplicativos e tocar músicas
+- Ver a tela do usuário quando ele pedir (você recebe uma captura de tela como imagem)
 - Executar comandos no terminal
 - Responder perguntas gerais
 
@@ -40,8 +42,17 @@ TOOLS = [
 ]
 
 
+SCREEN_RE = re.compile(
+    r"screenshot|print da tela|captura de tela"
+    r"|\b(olh\w*|v[eê]\w*|analis\w*|l[eê]\w*|explic\w*|descrev\w*|o que)\b.*\btela\b"
+)
+
+
 def _detect_tool_call(user_msg):
     msg_lower = user_msg.lower()
+
+    if SCREEN_RE.search(msg_lower):
+        return "see_screen", {}
 
     if any(w in msg_lower for w in ["info do sistema", "informações do sistema", "ram", "cpu", "uso de disco", "memória do sistema"]):
         return "system_info", {}
@@ -223,6 +234,7 @@ class Brain:
         self.history = []
         self.model = DEFAULT_MODEL
         self.config = config
+        self.capture_hook = None
         self._detect_model()
 
     def _detect_model(self):
@@ -235,6 +247,8 @@ class Brain:
 
     def process(self, user_msg):
         tool_name, tool_args = _detect_tool_call(user_msg)
+        if tool_name == "see_screen":
+            return "".join(self._see_screen(user_msg))
         if tool_name:
             result = _execute_tool(tool_name, tool_args)
             return self._format_tool_result(tool_name, result)
@@ -243,6 +257,9 @@ class Brain:
 
     def process_stream(self, user_msg):
         tool_name, tool_args = _detect_tool_call(user_msg)
+        if tool_name == "see_screen":
+            yield from self._see_screen(user_msg)
+            return
         if tool_name:
             result = _execute_tool(tool_name, tool_args)
             yield self._format_tool_result(tool_name, result)
@@ -250,7 +267,30 @@ class Brain:
 
         self.history.append({"role": "user", "content": user_msg})
         messages = [{"role": "system", "content": self._get_system_prompt()}] + self.history[-20:]
+        yield from self._stream(messages)
 
+    def _see_screen(self, user_msg):
+        if self.capture_hook:
+            self.capture_hook(True)
+        try:
+            image = screen.capture_screen_b64()
+        finally:
+            if self.capture_hook:
+                self.capture_hook(False)
+        if not image:
+            yield "Não consegui capturar a tela. Verifique se o xdg-desktop-portal está rodando e se a permissão de captura foi concedida."
+            return
+
+        self.history.append({"role": "user", "content": f"{user_msg}\n(captura de tela enviada)"})
+        messages = [{"role": "system", "content": self._get_system_prompt()}] + self.history[-20:]
+        messages[-1] = {
+            "role": "user",
+            "content": f"{user_msg}\n\n[Captura da tela atual do usuário anexada. Analise o que aparece e responda.]",
+            "images": [image],
+        }
+        yield from self._stream(messages)
+
+    def _stream(self, messages):
         if not ollama.is_running():
             ollama.start_server()
 

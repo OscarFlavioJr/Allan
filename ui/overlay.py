@@ -10,6 +10,7 @@ class AllanOverlay(Gtk.Window):
     def __init__(self, brain, config):
         super().__init__()
         self.brain = brain
+        self.brain.capture_hook = self._hide_for_capture
         self.config = config
         self.expanded = False
         self.is_processing = False
@@ -703,6 +704,25 @@ class AllanOverlay(Gtk.Window):
             GLib.idle_add(lambda: label[0].set_text(full) if label[0] else None)
 
         GLib.idle_add(lambda: (self.status_label.set_text("Pronto"), setattr(self, "is_processing", False)))
+
+    def _hide_for_capture(self, hide):
+        # Chamado da thread do chat: esconde o overlay para ele não sair na captura.
+        import time
+        done = threading.Event()
+
+        def do():
+            if hide:
+                self.status_label.set_text("Olhando a tela...")
+                self.hide()
+            else:
+                self.show()
+                self.status_label.set_text("Pensando...")
+            done.set()
+            return False
+        GLib.idle_add(do)
+        done.wait(2)
+        if hide:
+            time.sleep(0.4)
 
     # ── CSS ──
 

@@ -18,6 +18,7 @@ Allan e um overlay desktop flutuante que roda 100% local com modelos via [Ollama
 - **Controle de volume** — sistema e player, por voz natural
 - **Conexoes automaticas** — detecta PWAs (Brave/Chrome) e apps nativos instalados
 - **Gerencia modelos** — listar, baixar e remover modelos Ollama
+- **Ve sua tela** — captura a tela (via xdg-desktop-portal) e analisa com um modelo de visao
 - **Monitora o sistema** — CPU, RAM, disco, processos
 - **Gerencia arquivos** — listar diretorios, navegar pastas
 - **Abre aplicativos** — inicia qualquer app instalado
@@ -44,6 +45,7 @@ Allan e um overlay desktop flutuante que roda 100% local com modelos via [Ollama
 | `listar arquivos ~/Downloads` | Lista o diretorio |
 | `abrir firefox` | Abre o app |
 | `processos` | Top processos por memoria |
+| `olha minha tela` | Captura a tela e analisa (precisa de modelo com visao) |
 
 ---
 
